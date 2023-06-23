@@ -9,6 +9,8 @@ const initialState = {
   isRecording: false,
   isSending: false,
   isPlayingAudio: false,
+  audioInputDeviceId: null as string | null,
+  audioOutputDeviceId: null as string | null,
 };
 
 export const appSlice = createSlice({
@@ -29,6 +31,12 @@ export const appSlice = createSlice({
     },
     setIsPlayingAudio: (state, action: PayloadAction<boolean>) => {
       state.isPlayingAudio = action.payload;
+    },
+    setAudioInputDeviceId: (state, action: PayloadAction<string | null>) => {
+      state.audioInputDeviceId = action.payload;
+    },
+    setAudioOutputDeviceId: (state, action: PayloadAction<string | null>) => {
+      state.audioOutputDeviceId = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -59,6 +67,9 @@ export const appSlice = createSlice({
   },
 });
 
+export const { setAudioInputDeviceId, setAudioOutputDeviceId } =
+  appSlice.actions;
+
 let audioStream: MediaStream | undefined;
 let audioRecorder: MediaRecorder | undefined;
 let audioBlobs: Blob[] | undefined;
@@ -67,8 +78,11 @@ export const startRecording = createAsyncThunk<
   void,
   string,
   { state: AppState }
->("app/startRecording", async () => {
-  audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+>("app/startRecording", async (_, { getState }) => {
+  const { audioInputDeviceId } = getState();
+  audioStream = await navigator.mediaDevices.getUserMedia({
+    audio: audioInputDeviceId ? { deviceId: audioInputDeviceId } : true,
+  });
   audioRecorder = new MediaRecorder(audioStream);
   audioBlobs = [];
 
@@ -105,7 +119,7 @@ export const finishRecording = createAsyncThunk<
   });
 
   // API request
-  const { chat, speaker } = getState();
+  const { chat, speaker, audioOutputDeviceId } = getState();
   const formData = new FormData();
   formData.append("context", JSON.stringify(chat));
   formData.append("speaker", speaker);
@@ -124,6 +138,10 @@ export const finishRecording = createAsyncThunk<
 
   // Start playing the audio
   const ctx = new AudioContext();
+  if (audioOutputDeviceId) {
+    // Chrome 110+ only, not typed.
+    (ctx as any).setSinkId(audioOutputDeviceId);
+  }
   const audio = await ctx.decodeAudioData(await res.arrayBuffer());
   const player = ctx.createBufferSource();
   player.buffer = audio;
