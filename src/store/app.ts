@@ -162,6 +162,15 @@ export const finishRecording = createAsyncThunk<
     method: "POST",
     body: formData,
   });
+  if (!res.ok) {
+    let json = { message: "Unknown error" };
+    try {
+      json = await res.json();
+    } catch {
+      /* no-op */
+    }
+    throw new Error(`${res.status} ${res.statusText}: ${json.message}`);
+  }
   console.log(res);
 
   // Stop playing the waiting audio, start playing the dialogue audio
