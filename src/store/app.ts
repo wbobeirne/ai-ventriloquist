@@ -74,6 +74,8 @@ export const { addChatMessage, setAudioInputDeviceId, setAudioOutputDeviceId } =
 let audioStream: MediaStream | undefined;
 let audioRecorder: MediaRecorder | undefined;
 let audioBlobs: Blob[] | undefined;
+let beepBoopPromise: Promise<AudioBuffer>;
+let ctx: AudioContext;
 
 export const startRecording = createAsyncThunk<
   void,
@@ -92,6 +94,16 @@ export const startRecording = createAsyncThunk<
   });
 
   audioRecorder.start();
+
+  // Initiailize audio context & fetch beepboop audio if we haven't already
+  if (!ctx) {
+    ctx = new AudioContext();
+  }
+  if (!beepBoopPromise) {
+    beepBoopPromise = fetch("/audio/processing.mp3")
+      .then((res) => res.arrayBuffer())
+      .then((buffer) => ctx.decodeAudioData(buffer));
+  }
 });
 
 export const finishRecording = createAsyncThunk<
@@ -104,24 +116,19 @@ export const finishRecording = createAsyncThunk<
 
   const { chat, speaker, audioOutputDeviceId } = getState();
 
-  // Warm up the audio recording with quiet noise. This kicks on any bluetooth
-  // speakers that have a slight delay before audio actually starts playing.
-  const ctx = new AudioContext();
-  if (audioOutputDeviceId) {
+  // Configure audio output device, if specified
+  if (audioOutputDeviceId && "setSinkId" in ctx) {
     // Chrome 110+ only, not typed.
     (ctx as any).setSinkId(audioOutputDeviceId);
   }
-  const bufferSize = 2 * ctx.sampleRate;
-  const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const output = noiseBuffer.getChannelData(0);
-  for (var i = 0; i < bufferSize; i++) {
-    output[i] = 1;
-  }
-  const whiteNoise = ctx.createBufferSource();
-  whiteNoise.buffer = noiseBuffer;
-  whiteNoise.loop = true;
-  whiteNoise.connect(ctx.destination);
-  whiteNoise.start(0);
+
+  // Warm up the audio recording and play some robot noises while we wait.
+  // Also useful for bluetooth speakers with delay before audio actually starts playing.
+  const beepboopSource = ctx.createBufferSource();
+  beepboopSource.buffer = await beepBoopPromise;
+  beepboopSource.loop = true;
+  beepboopSource.connect(ctx.destination);
+  beepboopSource.start();
 
   // Get audio out of active recording
   const audioBlob = await new Promise<Blob>((resolve, reject) => {
@@ -158,15 +165,12 @@ export const finishRecording = createAsyncThunk<
   console.log(res);
 
   // Stop playing the waiting audio, start playing the dialogue audio
-  whiteNoise.stop();
+  beepboopSource.stop();
   const audio = await ctx.decodeAudioData(await res.arrayBuffer());
-  const player = ctx.createBufferSource();
-  player.buffer = audio;
-  player.connect(ctx.destination);
-  player.start();
-  player.addEventListener("ended", () => {
-    ctx.close();
-  });
+  const dialogeSource = ctx.createBufferSource();
+  dialogeSource.buffer = audio;
+  dialogeSource.connect(ctx.destination);
+  dialogeSource.start();
 
   // Pull data out of headers, return new chat state
   const userDialogue = res.headers.get("X-User-Transcript") || "";
