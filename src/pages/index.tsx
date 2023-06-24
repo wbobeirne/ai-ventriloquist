@@ -19,6 +19,7 @@ import {
   FaCog,
 } from "react-icons/fa";
 import { SettingsModal } from "@/components/SettingsModal";
+import { PrerecordedModal } from "@/components/PrerecordedModal";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,6 +30,7 @@ export default function Home() {
   const isRecording = useAppSelector((s) => s.isRecording);
   const [speaker, setSpeaker] = useState("Will");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPrerecordedOpen, setIsPrerecordedOpen] = useState(false);
 
   const buttonProps = { size: "lg", flexShrink: 0 };
 
@@ -131,6 +133,7 @@ export default function Home() {
                 {...buttonProps}
                 aria-label="bullhorn"
                 icon={<FaBullhorn />}
+                onClick={() => setIsPrerecordedOpen(true)}
               />
             </>
           )}
@@ -140,6 +143,10 @@ export default function Home() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+      />
+      <PrerecordedModal
+        isOpen={isPrerecordedOpen}
+        onClose={() => setIsPrerecordedOpen(false)}
       />
     </>
   );

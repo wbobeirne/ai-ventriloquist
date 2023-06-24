@@ -68,7 +68,7 @@ export const appSlice = createSlice({
   },
 });
 
-export const { setAudioInputDeviceId, setAudioOutputDeviceId } =
+export const { addChatMessage, setAudioInputDeviceId, setAudioOutputDeviceId } =
   appSlice.actions;
 
 let audioStream: MediaStream | undefined;
