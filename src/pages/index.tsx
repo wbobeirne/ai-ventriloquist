@@ -84,7 +84,14 @@ export default function Home() {
               <Button
                 flex={1}
                 colorScheme="green"
-                onClick={() => dispatch(finishRecording())}
+                onClick={async () => {
+                  dispatch(finishRecording())
+                    .unwrap()
+                    .catch((err) => {
+                      console.error(err);
+                      alert(err.message);
+                    });
+                }}
                 {...buttonProps}
               >
                 Finish recording

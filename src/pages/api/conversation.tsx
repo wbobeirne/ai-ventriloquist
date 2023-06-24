@@ -15,7 +15,7 @@ export const config = {
   },
 };
 
-const axiosOptions = { timeout: 10000 };
+const axiosOptions = { timeout: 20000 };
 
 export default async function handler(
   req: NextApiRequest,
@@ -128,6 +128,9 @@ export default async function handler(
     });
 
   // Pull out the actual dialogue
+  console.log({
+    untrimmedDialogue: conversationRes.data.choices[0].message?.content,
+  });
   let dialogue = conversationRes.data.choices[0].message?.content
     .split(":")[1]
     .replace(
